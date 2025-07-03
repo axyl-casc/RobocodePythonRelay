@@ -1,0 +1,14 @@
+{
+  "name": "PlayerBot",
+  "version": "1.0",
+  "authors": [
+    "Axyl Carefoot-Schulz"
+  ],
+  "description": "",
+  "homepage": "",
+  "countryCodes": [
+	"ca"
+  ],
+  "platform": "JVM",
+  "programmingLang": "Java 11"
+}
