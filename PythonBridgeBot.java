@@ -10,7 +10,7 @@
 //
 // Communication protocol (line‑delimited JSON):
 //   Java → Python  : {"event":"scanned","distance":123.4,"energy":87.6}
-//   Python → Java  : {"cmd":"fire","power":2.5}
+//   Python → Java  : "forward 150"  or  {"cmd":"forward","distance":150}
 // Feel free to extend the EventJson helper or add new commands.
 // ------------------------------------------------------------------
 
@@ -69,6 +69,51 @@ public class PythonBridgeBot extends Bot {
     @Override
     public void onScannedBot(ScannedBotEvent e) {
         sendToPy(EventJson.scannedBot(e));
+    }
+
+    @Override
+    public void onBulletHitBot(BulletHitBotEvent e) {
+        sendToPy(EventJson.bulletHitBot(e));
+    }
+
+    @Override
+    public void onBulletFired(BulletFiredEvent e) {
+        sendToPy(EventJson.bulletFired(e));
+    }
+
+    @Override
+    public void onBulletHitWall(BulletHitWallEvent e) {
+        sendToPy(EventJson.bulletHitWall(e));
+    }
+
+    @Override
+    public void onHitBot(HitBotEvent e) {
+        sendToPy(EventJson.hitBot(e));
+    }
+
+    @Override
+    public void onTick(TickEvent e) {
+        sendToPy(EventJson.tick(e));
+    }
+
+    @Override
+    public void onWonRound(WonRoundEvent e) {
+        sendToPy(EventJson.wonRound(e));
+    }
+
+    @Override
+    public void onSkippedTurn(SkippedTurnEvent e) {
+        sendToPy(EventJson.skippedTurn(e));
+    }
+
+    @Override
+    public void onCustomEvent(CustomEvent e) {
+        sendToPy(EventJson.customEvent());
+    }
+
+    @Override
+    public void onTeamMessage(TeamMessageEvent e) {
+        sendToPy(EventJson.teamMessage(e));
     }
 
     @Override
@@ -145,18 +190,34 @@ public class PythonBridgeBot extends Bot {
          *   {"cmd":"turnRadar",  "angle": 360}
          */
         try {
-            var json = new org.json.JSONObject(cmd);
-            switch (json.getString("cmd")) {
-                case "fire" -> fire(json.getDouble("power"));
-                case "forward" -> forward(json.getDouble("distance"));
-                case "back" -> back(json.getDouble("distance"));
-                case "turn" -> turnRight(json.getDouble("angle"));
-                case "turnGun" -> turnGunRight(json.getDouble("angle"));
-                case "turnRadar" -> turnRadarRight(json.getDouble("angle"));
-                default -> logError("Unknown command from Python: " + cmd);
+            if (cmd.startsWith("{")) {
+                var json = new org.json.JSONObject(cmd);
+                dispatchCommand(json.getString("cmd"), json.optDouble("power"), json.optDouble("distance"), json.optDouble("angle"));
+                return;
             }
+
+            String[] parts = cmd.split("\\s+");
+            String c = parts[0];
+            double val = parts.length > 1 ? Double.parseDouble(parts[1]) : 0;
+            dispatchCommand(c, val, val, val);
         } catch (Exception ex) {
             logError("Cannot parse Python command: " + cmd + " (" + ex + ")");
+        }
+    }
+
+    private void dispatchCommand(String cmd, double power, double distance, double angle) {
+        switch (cmd) {
+            case "fire" -> fire(power);
+            case "forward" -> forward(distance);
+            case "back" -> back(distance);
+            case "turnLeft" -> turnLeft(angle);
+            case "turnRight" -> turnRight(angle);
+            case "turnGunLeft" -> turnGunLeft(angle);
+            case "turnGunRight" -> turnGunRight(angle);
+            case "turnRadarLeft" -> turnRadarLeft(angle);
+            case "turnRadarRight" -> turnRadarRight(angle);
+            case "rescan" -> rescan();
+            default -> logError("Unknown command from Python: " + cmd);
         }
     }
 
@@ -168,6 +229,42 @@ public class PythonBridgeBot extends Bot {
 
         static String hitByBullet(HitByBulletEvent e) {
             return "{\"event\":\"hitByBullet\",\"damage\":" + e.getDamage() + ",\"direction\":" + e.getBullet().getDirection() + "}";
+        }
+
+        static String bulletHitBot(BulletHitBotEvent e) {
+            return "{\"event\":\"bulletHitBot\",\"damage\":" + e.getDamage() + ",\"botId\":" + e.getVictimId() + "}";
+        }
+
+        static String bulletFired(BulletFiredEvent e) {
+            return "{\"event\":\"bulletFired\",\"bulletId\":" + e.getBulletState().getBulletId() + "}";
+        }
+
+        static String bulletHitWall(BulletHitWallEvent e) {
+            return "{\"event\":\"bulletHitWall\"}";
+        }
+
+        static String hitBot(HitBotEvent e) {
+            return "{\"event\":\"hitBot\",\"botId\":" + e.getBotId() + "}";
+        }
+
+        static String tick(TickEvent e) {
+            return "{\"event\":\"tick\",\"turn\":" + e.getTurnNumber() + "}";
+        }
+
+        static String wonRound(WonRoundEvent e) {
+            return "{\"event\":\"wonRound\",\"round\":" + e.getRoundNumber() + "}";
+        }
+
+        static String skippedTurn(SkippedTurnEvent e) {
+            return "{\"event\":\"skippedTurn\",\"turn\":" + e.getTurnNumber() + "}";
+        }
+
+        static String customEvent() {
+            return "{\"event\":\"custom\"}";
+        }
+
+        static String teamMessage(TeamMessageEvent e) {
+            return "{\"event\":\"teamMessage\",\"from\":" + e.getSenderId() + ",\"msg\":" + org.json.JSONObject.valueToString(e.getMessage()) + "}";
         }
 
         static String botDeath(BotDeathEvent e) {
