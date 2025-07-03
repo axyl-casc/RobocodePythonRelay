@@ -17,6 +17,9 @@
 import dev.robocode.tankroyale.botapi.*;
 import dev.robocode.tankroyale.botapi.events.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import java.io.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -172,19 +175,64 @@ public class PythonBridgeBot extends Bot {
          *   {"cmd":"turnRadar",  "angle": 360}
          */
         try {
-                JSONObject json = new JSONObject(cmd);
-                dispatchCommand(json.getString("cmd"), json.optDouble("power"), json.optDouble("distance"), json.optDouble("angle"));
+            Map<String, String> map = parseJson(cmd);
+            if (map.containsKey("cmd")) {
+                dispatchCommand(map.get("cmd"),
+                        parseDouble(map.get("power")),
+                        parseDouble(map.get("distance")),
+                        parseDouble(map.get("angle")));
                 return;
-                return;
-            }  catch (Exception ex) {
+            }
+        } catch (Exception ex) {
             logError("Cannot parse Python command: " + cmd + " (" + ex + ")");
         }
 
-            String[] parts = cmd.split("\\s+");
-            String c = parts[0];
-            double val = parts.length > 1 ? Double.parseDouble(parts[1]) : 0;
-            dispatchCommand(c, val, val, val);
+        String[] parts = cmd.split("\\s+");
+        String c = parts[0];
+        double val = parts.length > 1 ? Double.parseDouble(parts[1]) : 0;
+        dispatchCommand(c, val, val, val);
 
+    }
+
+    private double parseDouble(String s) {
+        if (s == null || s.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private Map<String, String> parseJson(String json) {
+        Map<String, String> map = new HashMap<>();
+        json = json.trim();
+        if (!json.startsWith("{") || !json.endsWith("}")) {
+            return map;
+        }
+        json = json.substring(1, json.length() - 1).trim();
+        if (json.isEmpty()) {
+            return map;
+        }
+        String[] tokens = json.split(",");
+        for (String token : tokens) {
+            String[] pair = token.split(":", 2);
+            if (pair.length != 2) {
+                continue;
+            }
+            String key = stripQuotes(pair[0].trim());
+            String value = stripQuotes(pair[1].trim());
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    private String stripQuotes(String s) {
+        if (s.startsWith("\"") && s.endsWith("\"")) {
+            return s.substring(1, s.length() - 1);
+        }
+        return s;
     }
 
     private void dispatchCommand(String cmd, double power, double distance, double angle) {
