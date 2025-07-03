@@ -178,6 +178,10 @@ public class PythonBridgeBot extends Bot {
         outgoing.offer(msg);
     }
 
+    private void logError(String message) {
+        System.err.println(message);
+    }
+
     // ── command parser ───────────────────────────────────────────────
     private void handlePythonCommand(String cmd) {
         /*
@@ -207,17 +211,39 @@ public class PythonBridgeBot extends Bot {
 
     private void dispatchCommand(String cmd, double power, double distance, double angle) {
         switch (cmd) {
-            case "fire" -> fire(power);
-            case "forward" -> forward(distance);
-            case "back" -> back(distance);
-            case "turnLeft" -> turnLeft(angle);
-            case "turnRight" -> turnRight(angle);
-            case "turnGunLeft" -> turnGunLeft(angle);
-            case "turnGunRight" -> turnGunRight(angle);
-            case "turnRadarLeft" -> turnRadarLeft(angle);
-            case "turnRadarRight" -> turnRadarRight(angle);
-            case "rescan" -> rescan();
-            default -> logError("Unknown command from Python: " + cmd);
+            case "fire":
+                fire(power);
+                break;
+            case "forward":
+                forward(distance);
+                break;
+            case "back":
+                back(distance);
+                break;
+            case "turnLeft":
+                turnLeft(angle);
+                break;
+            case "turnRight":
+                turnRight(angle);
+                break;
+            case "turnGunLeft":
+                turnGunLeft(angle);
+                break;
+            case "turnGunRight":
+                turnGunRight(angle);
+                break;
+            case "turnRadarLeft":
+                turnRadarLeft(angle);
+                break;
+            case "turnRadarRight":
+                turnRadarRight(angle);
+                break;
+            case "rescan":
+                rescan();
+                break;
+            default:
+                logError("Unknown command from Python: " + cmd);
+                break;
         }
     }
 
