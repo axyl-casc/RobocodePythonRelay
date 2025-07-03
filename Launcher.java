@@ -6,11 +6,11 @@ public class Launcher {
         // If Robocode Tank Royale supplies the server URL and secret on the
         // command line, skip the UI and start the bot immediately.
         if (args.length >= 2) {
-            new PlayerBot(args[0], args[1]).start();
+            new PythonBridgeBot(args[0], args[1]).start();
             return;
         }
 
-        Frame frame = new Frame("PlayerBot Launcher");
+        Frame frame = new Frame("PythonBridgeBot Launcher");
         frame.setLayout(new GridLayout(3, 2));
 
         Label urlLabel = new Label("Server address:");
@@ -41,7 +41,7 @@ public class Launcher {
             statusLabel.setText("Connecting...");
             new Thread(() -> {
                 try {
-                    PlayerBot bot = new PlayerBot(urlField.getText(), secretField.getText());
+                    PythonBridgeBot bot = new PythonBridgeBot(urlField.getText(), secretField.getText());
                     bot.start();
                     frame.dispose();
                 } catch (Exception ex) {
