@@ -59,10 +59,7 @@ public class PythonBridgeBot extends Bot {
         // Notify Python that the bot is ready
         sendToPy("{\"event\":\"connected\",\"round\":" + getRoundNumber() + "}");
 
-        // Idle – all actions are dictated from Python commands
-        while (isRunning()) {
-            execute();
-        }
+
     }
 
     // ── event forwarding ─────────────────────────────────────────────
@@ -71,24 +68,10 @@ public class PythonBridgeBot extends Bot {
         sendToPy(EventJson.scannedBot(e));
     }
 
-    @Override
-    public void onBulletHitBot(BulletHitBotEvent e) {
-        sendToPy(EventJson.bulletHitBot(e));
-    }
-
-    @Override
-    public void onBulletFired(BulletFiredEvent e) {
-        sendToPy(EventJson.bulletFired(e));
-    }
 
     @Override
     public void onBulletHitWall(BulletHitWallEvent e) {
         sendToPy(EventJson.bulletHitWall(e));
-    }
-
-    @Override
-    public void onHitBot(HitBotEvent e) {
-        sendToPy(EventJson.hitBot(e));
     }
 
     @Override
@@ -112,11 +95,6 @@ public class PythonBridgeBot extends Bot {
     }
 
     @Override
-    public void onTeamMessage(TeamMessageEvent e) {
-        sendToPy(EventJson.teamMessage(e));
-    }
-
-    @Override
     public void onHitByBullet(HitByBulletEvent e) {
         sendToPy(EventJson.hitByBullet(e));
     }
@@ -133,7 +111,7 @@ public class PythonBridgeBot extends Bot {
 
     @Override
     public void onRoundEnded(RoundEndedEvent e) {
-        sendToPy("{\"event\":\"roundEnded\",\"rank\":" + e.getRank() + "}");
+        sendToPy("{\"event\":\"roundEnded\"}");
     }
 
     @Override
@@ -194,19 +172,19 @@ public class PythonBridgeBot extends Bot {
          *   {"cmd":"turnRadar",  "angle": 360}
          */
         try {
-            if (cmd.startsWith("{")) {
-                var json = new org.json.JSONObject(cmd);
+                JSONObject json = new JSONObject(cmd);
                 dispatchCommand(json.getString("cmd"), json.optDouble("power"), json.optDouble("distance"), json.optDouble("angle"));
                 return;
-            }
+                return;
+            }  catch (Exception ex) {
+            logError("Cannot parse Python command: " + cmd + " (" + ex + ")");
+        }
 
             String[] parts = cmd.split("\\s+");
             String c = parts[0];
             double val = parts.length > 1 ? Double.parseDouble(parts[1]) : 0;
             dispatchCommand(c, val, val, val);
-        } catch (Exception ex) {
-            logError("Cannot parse Python command: " + cmd + " (" + ex + ")");
-        }
+
     }
 
     private void dispatchCommand(String cmd, double power, double distance, double angle) {
@@ -250,7 +228,7 @@ public class PythonBridgeBot extends Bot {
     // ── JSON builders for outgoing events ────────────────────────────
     private static class EventJson {
         static String scannedBot(ScannedBotEvent e) {
-            return "{\"event\":\"scanned\",\"distance\":" + e.getDistance() + ",\"energy\":" + e.getEnergy() + "}";
+            return "{\"event\":\"scanned\",\"distance\":\"energy\":" + e.getEnergy() + "}";
         }
 
         static String hitByBullet(HitByBulletEvent e) {
@@ -261,24 +239,18 @@ public class PythonBridgeBot extends Bot {
             return "{\"event\":\"bulletHitBot\",\"damage\":" + e.getDamage() + ",\"botId\":" + e.getVictimId() + "}";
         }
 
-        static String bulletFired(BulletFiredEvent e) {
-            return "{\"event\":\"bulletFired\",\"bulletId\":" + e.getBulletState().getBulletId() + "}";
-        }
 
         static String bulletHitWall(BulletHitWallEvent e) {
             return "{\"event\":\"bulletHitWall\"}";
         }
 
-        static String hitBot(HitBotEvent e) {
-            return "{\"event\":\"hitBot\",\"botId\":" + e.getBotId() + "}";
-        }
 
         static String tick(TickEvent e) {
             return "{\"event\":\"tick\",\"turn\":" + e.getTurnNumber() + "}";
         }
 
         static String wonRound(WonRoundEvent e) {
-            return "{\"event\":\"wonRound\",\"round\":" + e.getRoundNumber() + "}";
+            return "{\"event\":\"wonRound\",\"round\":}";
         }
 
         static String skippedTurn(SkippedTurnEvent e) {
@@ -289,9 +261,6 @@ public class PythonBridgeBot extends Bot {
             return "{\"event\":\"custom\"}";
         }
 
-        static String teamMessage(TeamMessageEvent e) {
-            return "{\"event\":\"teamMessage\",\"from\":" + e.getSenderId() + ",\"msg\":" + org.json.JSONObject.valueToString(e.getMessage()) + "}";
-        }
 
         static String botDeath(BotDeathEvent e) {
             return "{\"event\":\"opponentDeath\",\"botId\":" + e.getVictimId() + "}";
