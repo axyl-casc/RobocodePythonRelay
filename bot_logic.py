@@ -35,6 +35,7 @@ def main_loop():
 def handle_event(evt):
     global bot_direction
     event = evt.get("event")
+    print(event)
 
     if event == "connected":
         # Start movement in the background when the bot connects
