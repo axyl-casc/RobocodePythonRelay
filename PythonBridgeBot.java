@@ -7,6 +7,7 @@
 //   • Forwarding key game events to the Python program as single‑line JSON
 //   • Parsing simple JSON commands coming back from Python and invoking the
 //     corresponding Bot API calls (move, turn, fire, etc.)
+//   • Processing everything sequentially each turn without background threads
 //
 // Communication protocol (line‑delimited JSON):
 //   Java → Python  : {"event":"scanned","distance":123.4,"energy":87.6}
@@ -22,8 +23,8 @@ import java.util.Map;
 
 import java.io.*;
 import java.net.URI;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 /**
  * A minimal bridge bot that delegates strategy to a Python script.
@@ -33,9 +34,9 @@ public class PythonBridgeBot extends Bot {
     // ── python process & I/O ──────────────────────────────────────────
     private Process pyProcess;
     private BufferedReader pyIn;
+    private BufferedReader pyErr;
     private PrintWriter pyOut;
-    private final BlockingQueue<String> outgoing = new LinkedBlockingQueue<>();
-    private final BlockingQueue<String> incoming = new LinkedBlockingQueue<>();
+    private final Queue<String> eventQueue = new ArrayDeque<>();
 
     // ── entry point ──────────────────────────────────────────────────
     public static void main(String[] args) {
@@ -66,79 +67,74 @@ public class PythonBridgeBot extends Bot {
             return; // abort bot if Python cannot be launched
         }
 
-        // Pipe I/O in background threads so the bot thread stays responsive
-        new Thread(this::readFromPython, "python-reader").start();
-        new Thread(this::writeToPython, "python-writer").start();
-        new Thread(this::readErrorFromPython, "python-error-reader").start();
-
-        // Notify Python that the bot is ready
+        // Send initial connected event
         sendToPy("{\"event\":\"connected\",\"round\":" + getRoundNumber() + "}");
 
-        // Keep processing turns so the Java side generates events
+        // Main loop: execute one turn at a time
+        // Events received during the turn are queued by the event handlers and
+        // sent to Python after each go() call. The Python program replies with
+        // simple commands that are executed before the next turn.
         while (isRunning()) {
             go();
+            flushEvents();
         }
     }
 
     // ── event forwarding ─────────────────────────────────────────────
     @Override
     public void onScannedBot(ScannedBotEvent e) {
-        sendToPy(EventJson.scannedBot(e));
+        eventQueue.offer(EventJson.scannedBot(e));
     }
 
 
     @Override
     public void onBulletHitWall(BulletHitWallEvent e) {
-        sendToPy(EventJson.bulletHitWall(e));
+        eventQueue.offer(EventJson.bulletHitWall(e));
     }
 
     @Override
     public void onTick(TickEvent e) {
-        sendToPy(EventJson.tick(this, e));
-        String cmd;
-        while ((cmd = incoming.poll()) != null) {
-            handlePythonCommand(cmd);
-        }
+        eventQueue.offer(EventJson.tick(this, e));
     }
 
     @Override
     public void onWonRound(WonRoundEvent e) {
-        sendToPy(EventJson.wonRound(e));
+        eventQueue.offer(EventJson.wonRound(e));
     }
 
     @Override
     public void onSkippedTurn(SkippedTurnEvent e) {
-        sendToPy(EventJson.skippedTurn(e));
+        eventQueue.offer(EventJson.skippedTurn(e));
     }
 
     @Override
     public void onCustomEvent(CustomEvent e) {
-        sendToPy(EventJson.customEvent());
+        eventQueue.offer(EventJson.customEvent());
     }
 
     @Override
     public void onHitByBullet(HitByBulletEvent e) {
-        sendToPy(EventJson.hitByBullet(e));
+        eventQueue.offer(EventJson.hitByBullet(e));
     }
 
     @Override
     public void onHitWall(HitWallEvent e) {
-        sendToPy("{\"event\":\"hitWall\"}");
+        eventQueue.offer("{\"event\":\"hitWall\"}");
     }
 
     @Override
     public void onBotDeath(BotDeathEvent e) {
-        sendToPy(EventJson.botDeath(e));
+        eventQueue.offer(EventJson.botDeath(e));
     }
 
     @Override
     public void onRoundEnded(RoundEndedEvent e) {
-        sendToPy("{\"event\":\"roundEnded\"}");
+        eventQueue.offer("{\"event\":\"roundEnded\"}");
     }
 
     @Override
     public void onDeath(DeathEvent e) {
-        sendToPy("{\"event\":\"death\"}");
+        eventQueue.offer("{\"event\":\"death\"}");
         if (pyProcess != null) {
             pyProcess.destroy();
         }
@@ -161,46 +157,35 @@ public class PythonBridgeBot extends Bot {
 
         pyProcess = new ProcessBuilder("python", "-u", script.getAbsolutePath()).start();
         pyIn = new BufferedReader(new InputStreamReader(pyProcess.getInputStream()));
+        pyErr = new BufferedReader(new InputStreamReader(pyProcess.getErrorStream()));
         pyOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(pyProcess.getOutputStream())), true);
-    }
-
-    private void readFromPython() {
-        String line;
-        try {
-            while ((line = pyIn.readLine()) != null) {
-                System.out.println("[Python] " + line); // echo Python output to the console
-                incoming.offer(line.trim());
-            }
-        } catch (IOException ex) {
-            logError("Lost connection to Python: " + ex.getMessage());
-        }
-    }
-
-    private void readErrorFromPython() {
-        try (BufferedReader err = new BufferedReader(new InputStreamReader(pyProcess.getErrorStream()))) {
-            String line;
-            while ((line = err.readLine()) != null) {
-                System.err.println("[PyErr] " + line);
-            }
-        } catch (IOException ex) {
-            logError("Lost stderr from Python: " + ex.getMessage());
-        }
-    }
-
-    private void writeToPython() {
-        try {
-            while (isRunning()) {
-                String msg = outgoing.take();
-                pyOut.println(msg);
-            }
-        } catch (InterruptedException ignored) {
-            // Bot shutting down
-        }
     }
 
     private void sendToPy(String msg) {
         System.out.println("[ToPython] " + msg);
-        outgoing.offer(msg);
+        pyOut.println(msg);
+        pyOut.flush();
+    }
+
+    private void flushEvents() {
+        while (!eventQueue.isEmpty()) {
+            sendToPy(eventQueue.poll());
+        }
+        try {
+            while (pyErr != null && pyErr.ready()) {
+                System.err.println("[PyErr] " + pyErr.readLine());
+            }
+            while (pyIn != null && pyIn.ready()) {
+                String line = pyIn.readLine();
+                if (line == null) {
+                    break;
+                }
+                System.out.println("[Python] " + line);
+                handlePythonCommand(line.trim());
+            }
+        } catch (IOException ex) {
+            logError("I/O with Python failed: " + ex.getMessage());
+        }
     }
 
     private void logError(String message) {
