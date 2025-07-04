@@ -89,7 +89,7 @@ public class PythonBridgeBot extends Bot {
 
     @Override
     public void onTick(TickEvent e) {
-        sendToPy(EventJson.tick(e));
+        sendToPy(EventJson.tick(this, e));
     }
 
     @Override
@@ -303,8 +303,19 @@ public class PythonBridgeBot extends Bot {
         }
 
 
-        static String tick(TickEvent e) {
-            return "{\"event\":\"tick\",\"turn\":" + e.getTurnNumber() + "}";
+        static String tick(PythonBridgeBot bot, TickEvent e) {
+            return "{" +
+                    "\"event\":\"tick\"," +
+                    "\"turn\":" + e.getTurnNumber() + "," +
+                    "\"energy\":" + bot.getEnergy() + "," +
+                    "\"x\":" + bot.getX() + "," +
+                    "\"y\":" + bot.getY() + "," +
+                    "\"direction\":" + bot.getDirection() + "," +
+                    "\"gunDirection\":" + bot.getGunDirection() + "," +
+                    "\"radarDirection\":" + bot.getRadarDirection() + "," +
+                    "\"gunHeat\":" + bot.getGunHeat() + "," +
+                    "\"speed\":" + bot.getSpeed() +
+                    "}";
         }
 
         static String wonRound(WonRoundEvent e) {
