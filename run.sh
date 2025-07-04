@@ -4,5 +4,7 @@
 
 set -e
 mkdir -p build
-javac -d build -cp "lib/*" PythonBridgeBot.java Launcher.java
+# Compile all available Java sources so both example bots can be run
+javac --release 11 -d build -cp "lib/*" *.java
+# Default to launching the original UI launcher
 java -cp "lib/*:build" Launcher "$@"

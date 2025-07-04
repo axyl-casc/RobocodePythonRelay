@@ -1,0 +1,10 @@
+{
+  "name": "MyFirstBot",
+  "version": "1.0",
+  "authors": ["Axyl Carefoot-Schulz"],
+  "description": "Python controlled sample bot",
+  "homepage": "",
+  "countryCodes": ["ca"],
+  "platform": "JVM",
+  "programmingLang": "Java 11"
+}

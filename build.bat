@@ -5,7 +5,7 @@ setlocal
 if not exist build mkdir build
 
 :: Step 2: Compile the Java files
-javac -d build -cp "lib/*" PythonBridgeBot.java Launcher.java
+javac --release 11 -d build -cp "lib/*" PythonBridgeBot.java Launcher.java
 if errorlevel 1 (
     echo Compilation failed.
     exit /b 1
