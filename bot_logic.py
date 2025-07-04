@@ -1,6 +1,11 @@
 import json
 import sys
 
+
+def debug(msg: str) -> None:
+    """Print a debug message to stderr."""
+    print(f"[DEBUG] {msg}", file=sys.stderr, flush=True)
+
 """Basic Python logic for the bridge bot.
 
 This script mirrors the behaviour of the simple Java bot shown in the
@@ -25,6 +30,7 @@ def normalize_angle(angle: float) -> float:
 
 def run():
     """Execute one iteration of the movement pattern from MyFirstBot."""
+    debug("Executing run movement pattern")
     send_cmd("forward 100")
     send_cmd("turnGunLeft 360")
     send_cmd("back 100")
@@ -34,7 +40,7 @@ def run():
 def handle_event(evt):
     global bot_direction
     event = evt.get("event")
-    print(event)
+    debug(f"Handling event: {evt}")
 
     if event == "connected":
         # Begin executing the movement pattern when the bot connects
@@ -58,11 +64,13 @@ def handle_event(evt):
 
 
 def send_cmd(cmd: str):
+    debug(f"Sending command: {cmd}")
     print(cmd, flush=True)
 
 
 if __name__ == "__main__":
     for line in sys.stdin:
+        debug(f"Raw input: {line.rstrip()}")
         line = line.strip()
         if not line:
             handle_event({"event": "run"})
@@ -72,4 +80,5 @@ if __name__ == "__main__":
             handle_event(event)
         except json.JSONDecodeError:
             # Use a synthetic run event when the input is not valid JSON
+            debug("Invalid JSON received")
             handle_event({"event": "run"})
