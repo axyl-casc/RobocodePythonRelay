@@ -69,6 +69,7 @@ public class PythonBridgeBot extends Bot {
         // Pipe I/O in background threads so the bot thread stays responsive
         new Thread(this::readFromPython, "python-reader").start();
         new Thread(this::writeToPython, "python-writer").start();
+        new Thread(this::readErrorFromPython, "python-error-reader").start();
 
         // Notify Python that the bot is ready
         sendToPy("{\"event\":\"connected\",\"round\":" + getRoundNumber() + "}");
@@ -175,6 +176,17 @@ public class PythonBridgeBot extends Bot {
         }
     }
 
+    private void readErrorFromPython() {
+        try (BufferedReader err = new BufferedReader(new InputStreamReader(pyProcess.getErrorStream()))) {
+            String line;
+            while ((line = err.readLine()) != null) {
+                System.err.println("[PyErr] " + line);
+            }
+        } catch (IOException ex) {
+            logError("Lost stderr from Python: " + ex.getMessage());
+        }
+    }
+
     private void writeToPython() {
         try {
             while (isRunning()) {
@@ -187,6 +199,7 @@ public class PythonBridgeBot extends Bot {
     }
 
     private void sendToPy(String msg) {
+        System.out.println("[ToPython] " + msg);
         outgoing.offer(msg);
     }
 
