@@ -1,2 +1,3 @@
 javac -cp lib/* PythonBridgeBot.java
-java -cp lib/*;. PythonBridgeBot >nul
+rem Run without redirecting output so the Python console is visible
+java -cp lib/*;. PythonBridgeBot

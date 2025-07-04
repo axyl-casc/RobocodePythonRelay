@@ -147,6 +147,7 @@ public class PythonBridgeBot extends Bot {
         String line;
         try {
             while ((line = pyIn.readLine()) != null) {
+                System.out.println("[Python] " + line); // echo Python output to the console
                 handlePythonCommand(line.trim());
             }
         } catch (IOException ex) {
