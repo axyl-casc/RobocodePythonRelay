@@ -267,31 +267,31 @@ public class PythonBridgeBot extends Bot {
     private void dispatchCommand(String cmd, double power, double distance, double angle) {
         switch (cmd) {
             case "fire":
-                fire(power);
+                setFire(power);
                 break;
             case "forward":
-                forward(distance);
+                setForward(distance);
                 break;
             case "back":
-                back(distance);
+                setBack(distance);
                 break;
             case "turnLeft":
-                turnLeft(angle);
+                setTurnLeft(angle);
                 break;
             case "turnRight":
-                turnRight(angle);
+                setTurnRight(angle);
                 break;
             case "turnGunLeft":
-                turnGunLeft(angle);
+                setTurnGunLeft(angle);
                 break;
             case "turnGunRight":
-                turnGunRight(angle);
+                setTurnGunRight(angle);
                 break;
             case "turnRadarLeft":
-                turnRadarLeft(angle);
+                setTurnRadarLeft(angle);
                 break;
             case "turnRadarRight":
-                turnRadarRight(angle);
+                setTurnRadarRight(angle);
                 break;
             case "rescan":
                 rescan();
