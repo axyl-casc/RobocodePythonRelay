@@ -35,6 +35,7 @@ public class PythonBridgeBot extends Bot {
     private BufferedReader pyIn;
     private PrintWriter pyOut;
     private final BlockingQueue<String> outgoing = new LinkedBlockingQueue<>();
+    private final BlockingQueue<String> incoming = new LinkedBlockingQueue<>();
 
     // ── entry point ──────────────────────────────────────────────────
     public static void main(String[] args) {
@@ -90,6 +91,10 @@ public class PythonBridgeBot extends Bot {
     @Override
     public void onTick(TickEvent e) {
         sendToPy(EventJson.tick(this, e));
+        String cmd;
+        while ((cmd = incoming.poll()) != null) {
+            handlePythonCommand(cmd);
+        }
     }
 
     @Override
@@ -148,7 +153,7 @@ public class PythonBridgeBot extends Bot {
         try {
             while ((line = pyIn.readLine()) != null) {
                 System.out.println("[Python] " + line); // echo Python output to the console
-                handlePythonCommand(line.trim());
+                incoming.offer(line.trim());
             }
         } catch (IOException ex) {
             logError("Lost connection to Python: " + ex.getMessage());
@@ -287,15 +292,30 @@ public class PythonBridgeBot extends Bot {
     // ── JSON builders for outgoing events ────────────────────────────
     private static class EventJson {
         static String scannedBot(ScannedBotEvent e) {
-            return "{\"event\":\"scanned\",\"distance\":\"energy\":" + e.getEnergy() + "}";
+            return "{" +
+                    "\"event\":\"scanned\"," +
+                    "\"energy\":" + e.getEnergy() + "," +
+                    "\"x\":" + e.getX() + "," +
+                    "\"y\":" + e.getY() + "," +
+                    "\"direction\":" + e.getDirection() + "," +
+                    "\"speed\":" + e.getSpeed() +
+                    "}";
         }
 
         static String hitByBullet(HitByBulletEvent e) {
-            return "{\"event\":\"hitByBullet\",\"damage\":" + e.getDamage() + ",\"direction\":" + e.getBullet().getDirection() + "}";
+            return "{" +
+                    "\"event\":\"hitByBullet\"," +
+                    "\"damage\":" + e.getDamage() + "," +
+                    "\"direction\":" + e.getBullet().getDirection() +
+                    "}";
         }
 
         static String bulletHitBot(BulletHitBotEvent e) {
-            return "{\"event\":\"bulletHitBot\",\"damage\":" + e.getDamage() + ",\"botId\":" + e.getVictimId() + "}";
+            return "{" +
+                    "\"event\":\"bulletHitBot\"," +
+                    "\"damage\":" + e.getDamage() + "," +
+                    "\"botId\":" + e.getVictimId() +
+                    "}";
         }
 
 
@@ -320,7 +340,7 @@ public class PythonBridgeBot extends Bot {
         }
 
         static String wonRound(WonRoundEvent e) {
-            return "{\"event\":\"wonRound\",\"round\":}";
+            return "{\"event\":\"wonRound\",\"turn\":" + e.getTurnNumber() + "}";
         }
 
         static String skippedTurn(SkippedTurnEvent e) {
