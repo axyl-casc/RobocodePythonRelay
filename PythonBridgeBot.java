@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import java.io.*;
+import java.net.URI;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -43,6 +44,15 @@ public class PythonBridgeBot extends Bot {
     // ── constructor ──────────────────────────────────────────────────
     public PythonBridgeBot() {
         super(BotInfo.fromFile("PythonBridgeBot.json"));
+    }
+
+    /**
+     * Creates a PythonBridgeBot that connects to a specific server URL using a
+     * secret for authentication. This is primarily used when the launcher
+     * supplies connection details provided by Robocode Tank Royale.
+     */
+    public PythonBridgeBot(String serverUrl, String serverSecret) {
+        super(BotInfo.fromFile("PythonBridgeBot.json"), URI.create(serverUrl), serverSecret);
     }
 
     // ── main loop ────────────────────────────────────────────────────
