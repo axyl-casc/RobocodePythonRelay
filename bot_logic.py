@@ -1,9 +1,11 @@
 import json
-import math
+import random
 import sys
 
 # Current direction of our bot, updated each tick
 bot_direction = 0.0
+move_remaining = 0.0
+TURN_OPTIONS = [-90, -45, 45, 90]
 
 
 def normalize(angle: float) -> float:
@@ -20,14 +22,23 @@ def send(cmd: str) -> None:
 
 
 def handle_event(evt: dict) -> None:
-    global bot_direction
+    global bot_direction, move_remaining
     event = evt.get("event")
 
     if event == "tick":
         bot_direction = evt.get("direction", bot_direction)
-        send("forward 100")
-        send("turnGunLeft 360")
-        send("back 100")
+        speed = abs(evt.get("speed", 0.0))
+        if move_remaining <= 0:
+            distance = 150
+            move_remaining = distance
+            send(f"forward {distance}")
+            angle = random.choice(TURN_OPTIONS)
+            if angle > 0:
+                send(f"turnRight {angle}")
+            else:
+                send(f"turnLeft {-angle}")
+        else:
+            move_remaining -= speed
         send("turnGunLeft 360")
     elif event == "scanned":
         send("fire 1")
@@ -35,6 +46,8 @@ def handle_event(evt: dict) -> None:
         bullet_dir = evt.get("direction", 0.0)
         bearing = normalize(bullet_dir - bot_direction)
         send(f"turnRight {90 - bearing}")
+    elif event == "hitWall":
+        move_remaining = 0.0
 
 
 def main() -> None:
