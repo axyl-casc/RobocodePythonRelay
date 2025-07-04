@@ -73,7 +73,10 @@ public class PythonBridgeBot extends Bot {
         // Notify Python that the bot is ready
         sendToPy("{\"event\":\"connected\",\"round\":" + getRoundNumber() + "}");
 
-
+        // Keep processing turns so the Java side generates events
+        while (isRunning()) {
+            go();
+        }
     }
 
     // ── event forwarding ─────────────────────────────────────────────
@@ -143,7 +146,19 @@ public class PythonBridgeBot extends Bot {
     // ── python process helpers ───────────────────────────────────────
     private void startPython() throws IOException {
         // Use -u for unbuffered stdout so we receive events immediately
-        pyProcess = new ProcessBuilder("python", "-u", "bot_logic.py").start();
+        File script = new File("bot_logic.py");
+        if (!script.isFile()) {
+            // When executed from another directory, fall back to the jar location
+            File jar = new File(PythonBridgeBot.class.getProtectionDomain()
+                    .getCodeSource().getLocation().getPath());
+            File jarDir = jar.getParentFile();
+            script = new File(jarDir, "bot_logic.py");
+        }
+        if (!script.isFile()) {
+            throw new IOException("Cannot locate bot_logic.py");
+        }
+
+        pyProcess = new ProcessBuilder("python", "-u", script.getAbsolutePath()).start();
         pyIn = new BufferedReader(new InputStreamReader(pyProcess.getInputStream()));
         pyOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(pyProcess.getOutputStream())), true);
     }
