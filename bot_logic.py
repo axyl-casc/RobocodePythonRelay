@@ -9,8 +9,14 @@ def handle_event(evt):
     if evt.get('event') == 'connected':
         # Move forward a bit when connected
         send_cmd('forward 150')
+        send_cmd('turnRadarRight 360')  # initial scan
     elif evt.get('event') == 'tick':
-        pass  # placeholder for more logic
+        # Access bot state sent from Java
+        energy = evt.get('energy')
+        gun_heat = evt.get('gunHeat')
+        # Example: fire when gun is cooled down
+        if gun_heat == 0:
+            send_cmd('fire 2.0')
 
 
 def send_cmd(cmd):
