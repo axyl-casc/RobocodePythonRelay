@@ -25,7 +25,17 @@ def handle_event(evt: dict) -> None:
     global bot_direction, move_remaining
     event = evt.get("event")
 
-    if event == "tick":
+
+    if event == "scanned":
+        send("fire 1")
+    elif event == "hitByBullet":
+        bullet_dir = evt.get("direction", 0.0)
+        bearing = normalize(bullet_dir - bot_direction)
+        send(f"turnRight {90 - bearing}")
+    elif event == "hitWall":
+        move_remaining = 0.0
+        send(f"turnRight 180")
+    else:
         bot_direction = evt.get("direction", bot_direction)
         speed = abs(evt.get("speed", 0.0))
         if move_remaining <= 0:
@@ -40,14 +50,6 @@ def handle_event(evt: dict) -> None:
         else:
             move_remaining -= speed
         send("turnGunLeft 360")
-    elif event == "scanned":
-        send("fire 1")
-    elif event == "hitByBullet":
-        bullet_dir = evt.get("direction", 0.0)
-        bearing = normalize(bullet_dir - bot_direction)
-        send(f"turnRight {90 - bearing}")
-    elif event == "hitWall":
-        move_remaining = 0.0
 
 
 def main() -> None:
